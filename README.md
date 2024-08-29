@@ -21,16 +21,21 @@ and finds, firstly, if they exists and, secondly, the current values settings.
 That files are filled with a integer value representing the battery percentage at which,
 respectively, the battery starts and stops charging.
 
-## Usage
-Clone this repo where you prefer 
+## Installation
+Clone this repo where you prefer (for instance under `~/Documents/dev/rust/`)
 ```{sh}
-git clone ...
+mkdir -r ~/Documents/dev/rust/ && cd ~/Documents/dev/rust/
+git clone https://github.com/sebastiano123-c/battery_threshold.git
 cd battery_threshold/
 cargo build
 cargo run
 cargo install --path .
 ```
 The latter command will install the executable in the $CARGO bin directory, so you can execute where you want.
+After shutting down the terminal and creating a new one, test the program by typing
+```{sh}
+battery_threshold
+```
 
 **Important notes**:
  1. Not every laptop can change the battery threshold, especially old PCs charge until they reach 100% capacity. This means that this program may not work on your PC;
@@ -41,6 +46,9 @@ Tested with the following linux distributions:
  - [x] Fedora 40 Workstation;
      - [x] SwayWM;
      - [x] i3WM;
+
+## TODO
+ - [ ] add the possibility to set sudo privileges with gui and not in terminal;
 
 ## License 
 MIT
