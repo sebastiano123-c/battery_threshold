@@ -4,5 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-gtk = { git = "https://github.com/gtk-rs/gtk4-rs.git", package = "gtk4" }
+gtk = { git = "https://github.com/gtk-rs/gtk4-rs.git", package = "gtk4", features = [
+  "v4_10",
+] }
 # gtk = { version = "0.5.5", package = "gtk4" }
