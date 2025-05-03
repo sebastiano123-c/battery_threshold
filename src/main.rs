@@ -25,7 +25,7 @@ use gui::Gui;
 fn main() -> glib::ExitCode {
     // Application GTK
     let application = Application::builder()
-        .application_id("com.example.battery_threshold")
+        .application_id("com.seb.battery_threshold")
         .build();
 
     // Activate GTK app

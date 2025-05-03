@@ -1,13 +1,14 @@
-use gtk::prelude::*;
 use std::process::Command;
 use std::string::String;
 
 #[derive(Debug)]
 pub struct Battery {
     pub bat_list: Vec<String>,
-    pub bat: String,
-    pub bat_start_thrs: String,
-    pub bat_end_thrs: String,
+    pub bat_name: String,
+    pub bat_start_thrs_init: u8,
+    pub bat_end_thrs_init: u8,
+    pub bat_start_thrs: u8,
+    pub bat_end_thrs: u8,
     pub bat_status: String,
     pub bat_capacity: String,
 }
@@ -27,9 +28,11 @@ impl Battery {
 
         Self {
             bat_list: battery_list,
-            bat: bat_name,
-            bat_start_thrs: "0".to_string(),
-            bat_end_thrs: "0".to_string(),
+            bat_name,
+            bat_end_thrs_init: 0,
+            bat_start_thrs_init: 0,
+            bat_start_thrs: 0,
+            bat_end_thrs: 0,
             bat_status: "".to_string(),
             bat_capacity: "".to_string(),
         }
@@ -45,7 +48,7 @@ impl Battery {
         // -----
         let cmd = format!(
             "echo {} | sudo tee /sys/class/power_supply/{}/{}",
-            &new_value, &self.bat, &property_name,
+            &new_value, &self.bat_name, &property_name,
         );
 
         // Print command
@@ -61,99 +64,184 @@ impl Battery {
         println!("Stdout: {}", content);
     }
 
-    pub fn set_bat_start_threshold(&self) {
-        // -----
-        // Set start charging threshold
-        // -----
-        let cmd = format!(
-            "echo {} | sudo tee /sys/class/power_supply/{}/charge_control_start_threshold",
-            &self.bat_start_thrs, &self.bat,
-        );
-
-        // Print command
-        println!("{}", cmd);
-
-        // Execute command
-        let output1 = Command::new("bash")
-            .args(&["-c", &cmd])
+    pub fn set_new_bat_threshold(&self) {
+        let output = std::process::Command::new("zenity")
+            .arg("--password")
             .output()
-            .expect("Failed to get random");
-        let content = String::from_utf8(output1.stdout).unwrap();
+            .expect("Failed to execute zenity");
 
-        println!("Stdout: {}", content);
+        if output.status.success() {
+            let password = String::from_utf8_lossy(&output.stdout).trim().to_string();
+
+            // Example command that requires sudo
+            let mut cmd_to_be_executed_last = format!(
+                "echo {} | sudo tee /sys/class/power_supply/{}/charge_control_start_threshold",
+                &self.bat_start_thrs, &self.bat_name,
+            );
+            let mut cmd_to_be_executed_first = format!(
+                "echo {} | sudo tee /sys/class/power_supply/{}/charge_control_end_threshold",
+                &self.bat_end_thrs, &self.bat_name,
+            );
+
+            if self.bat_end_thrs < self.bat_start_thrs_init {
+                cmd_to_be_executed_first = format!(
+                    "echo {} | sudo tee /sys/class/power_supply/{}/charge_control_start_threshold",
+                    &self.bat_start_thrs, &self.bat_name,
+                );
+                cmd_to_be_executed_last = format!(
+                    "echo {} | sudo tee /sys/class/power_supply/{}/charge_control_end_threshold",
+                    &self.bat_end_thrs, &self.bat_name,
+                );
+            }
+
+            // Use a heredoc to pass the password to sudo
+            let mut child = std::process::Command::new("sudo")
+                .arg("-S") // Read password from stdin
+                .arg("bash") // Start a bash shell
+                .arg("-c")
+                .arg(&cmd_to_be_executed_first)
+                .stdin(std::process::Stdio::piped()) // Allow us to write to stdin
+                .spawn()
+                .expect("Failed to execute command");
+
+            // Write the password to the stdin of the command
+            if let Some(mut stdin) = child.stdin.take() {
+                use std::io::Write;
+                let _ = stdin.write_all(format!("{}\n", password).as_bytes());
+            }
+
+            // Wait for the command to finish and capture the output
+            let output = child.wait_with_output().expect("Failed to read stdout");
+
+            // Check the output
+            if output.status.success() {
+                println!(
+                    "Command executed successfully: {}",
+                    String::from_utf8_lossy(&output.stdout)
+                );
+
+                // Use a heredoc to pass the password to sudo
+                _ = std::process::Command::new("sudo")
+                    .arg("-S") // Read password from stdin
+                    .arg("bash") // Start a bash shell
+                    .arg("-c")
+                    .arg(&cmd_to_be_executed_last)
+                    .stdin(std::process::Stdio::piped()) // Allow us to write to stdin
+                    .output()
+                    .expect("Failed to execute command");
+                // // Set new battery parameters
+                // bat.borrow().set_bat_start_threshold();
+                // bat.borrow().set_bat_end_threshold();
+            } else {
+                eprintln!(
+                    "Command failed: {}",
+                    String::from_utf8_lossy(&output.stderr)
+                );
+            }
+        } else {
+            eprintln!("Zenity failed: {}", String::from_utf8_lossy(&output.stderr));
+        }
     }
 
-    pub fn set_bat_end_threshold(&self) {
-        // -----
-        // Set end charging threshold
-        // -----
-        let cmd = format!(
-            "echo {} | sudo tee /sys/class/power_supply/{}/charge_control_end_threshold",
-            &self.bat_end_thrs, &self.bat,
-        );
-        println!("{}", cmd);
-
-        let output2 = Command::new("bash")
-            .args(&["-c", &cmd])
-            .output()
-            .expect("Failed to get random");
-        let content = String::from_utf8(output2.stdout).unwrap();
-
-        println!("Stdout: {}", content);
-    }
+    // pub fn set_bat_start_threshold(&self) {
+    //     // -----
+    //     // Set start charging threshold
+    //     // -----
+    //     let cmd = format!(
+    //         "echo {} | sudo tee /sys/class/power_supply/{}/charge_control_start_threshold",
+    //         &self.bat_start_thrs, &self.bat_name,
+    //     );
+    //
+    //     // Print command
+    //     println!("{}", cmd);
+    //
+    //     // Execute command
+    //     let output1 = Command::new(cmd)
+    //         // let output1 = Command::new("bash")
+    //         //     .args(&["-c", &cmd])
+    //         .output()
+    //         .expect("Failed to get random");
+    //     let content = String::from_utf8(output1.stdout).unwrap();
+    //
+    //     println!("Stdout: {}", content);
+    // }
+    //
+    // pub fn set_bat_end_threshold(&self) {
+    //     // -----
+    //     // Set end charging threshold
+    //     // -----
+    //     let cmd = format!(
+    //         "echo {} | sudo tee /sys/class/power_supply/{}/charge_control_end_threshold",
+    //         &self.bat_end_thrs, &self.bat_name,
+    //     );
+    //     println!("{}", cmd);
+    //
+    //     let output2 = Command::new(cmd)
+    //         // let output2 = Command::new("bash")
+    //         //     .args(&["-c", &cmd])
+    //         .output()
+    //         .expect("Failed to get random");
+    //     let content = String::from_utf8(output2.stdout).unwrap();
+    //
+    //     println!("Stdout: {}", content);
+    // }
 
     pub fn change_bat_name(&mut self, name: String) {
-        self.bat = name;
+        println!("Battery name changed to: {}", name);
+        self.bat_name = name;
     }
 
-    pub fn get_bat_property(&self, property_name: &str) -> String {
-        // cmd get battery status
-        let property_file = format!("/sys/class/power_supply/{}/{}", &self.bat, &property_name);
-        let output = Command::new("cat")
-            .arg(property_file)
-            .output()
-            .expect("Failed to execute command");
-
-        let bat_property = std::str::from_utf8(&output.stdout)
-            .expect("Invalid UTF-8 output")
-            .to_string();
-        println!("Battery {}: {}", property_name, bat_property);
-        bat_property
-    }
-
-    pub fn get_bat_capacity(&mut self) {
-        // cmd get battery status
-        let status_file = format!("/sys/class/power_supply/{}/capacity", &self.bat);
-        let output = Command::new("cat")
-            .arg(status_file)
-            .output()
-            .expect("Failed to execute command");
-
-        self.bat_capacity = std::str::from_utf8(&output.stdout)
-            .expect("Invalid UTF-8 output")
-            .to_string();
-        println!("Battery status: {}", self.bat_capacity);
-    }
-
-    pub fn get_bat_status(&mut self) {
-        // cmd get battery status
-        let status_file = format!("/sys/class/power_supply/{}/status", &self.bat);
-        let output = Command::new("cat")
-            .arg(status_file)
-            .output()
-            .expect("Failed to execute command");
-
-        self.bat_status = std::str::from_utf8(&output.stdout)
-            .expect("Invalid UTF-8 output")
-            .to_string();
-        println!("Battery status: {}", self.bat_status);
-    }
+    // pub fn get_bat_property(&self, property_name: &str) -> String {
+    //     // cmd get battery status
+    //     let property_file = format!(
+    //         "/sys/class/power_supply/{}/{}",
+    //         &self.bat_name, &property_name
+    //     );
+    //     let output = Command::new("cat")
+    //         .arg(property_file)
+    //         .output()
+    //         .expect("Failed to execute command");
+    //
+    //     let bat_property = std::str::from_utf8(&output.stdout)
+    //         .expect("Invalid UTF-8 output")
+    //         .to_string();
+    //     println!("Battery {}: {}", property_name, bat_property);
+    //     bat_property
+    // }
+    //
+    // pub fn get_bat_capacity(&mut self) {
+    //     // cmd get battery status
+    //     let status_file = format!("/sys/class/power_supply/{}/capacity", &self.bat_name);
+    //     let output = Command::new("cat")
+    //         .arg(status_file)
+    //         .output()
+    //         .expect("Failed to execute command");
+    //
+    //     self.bat_capacity = std::str::from_utf8(&output.stdout)
+    //         .expect("Invalid UTF-8 output")
+    //         .to_string();
+    //     println!("Battery status: {}", self.bat_capacity);
+    // }
+    //
+    // pub fn get_bat_status(&mut self) {
+    //     // cmd get battery status
+    //     let status_file = format!("/sys/class/power_supply/{}/status", &self.bat_name);
+    //     let output = Command::new("cat")
+    //         .arg(status_file)
+    //         .output()
+    //         .expect("Failed to execute command");
+    //
+    //     self.bat_status = std::str::from_utf8(&output.stdout)
+    //         .expect("Invalid UTF-8 output")
+    //         .to_string();
+    //     println!("Battery status: {}", self.bat_status);
+    // }
 
     pub fn get_bat_end_threshold(&mut self) {
         // Define the file names strings
         let end_file_name = format!(
             "/sys/class/power_supply/{}/charge_control_end_threshold",
-            &self.bat
+            &self.bat_name
         );
 
         // Lets firstly find current end charging value
@@ -163,16 +251,24 @@ impl Battery {
         // Remove the '\n' char at the end
         end_value_int.pop().unwrap().to_string();
 
-        println!("Actual charging end threshold: {}", end_value_int);
-
-        self.bat_end_thrs = end_value_int;
+        // Attempt to convert the string to u8
+        match end_value_int.parse::<u8>() {
+            Ok(value) => {
+                println!("Actual charging end threshold: {}", value);
+                self.bat_end_thrs = value;
+                self.bat_end_thrs_init = value;
+            }
+            Err(e) => {
+                eprintln!("Failed to convert string to u8: {}", e);
+            }
+        }
     }
 
     pub fn get_bat_start_threshold(&mut self) {
         // Define the file names strings
         let start_file_name = format!(
             "/sys/class/power_supply/{}/charge_control_start_threshold",
-            &self.bat
+            &self.bat_name
         );
 
         // Lets firstly find current start charging value
@@ -181,9 +277,18 @@ impl Battery {
 
         // Remove the '\n' char at the end
         start_value_int.pop().unwrap().to_string();
-        println!("Actual charging start threshold: {}", start_value_int);
 
-        self.bat_start_thrs = start_value_int;
+        // Attempt to convert the string to u8
+        match start_value_int.parse::<u8>() {
+            Ok(value) => {
+                println!("Actual charging start threshold: {}", value);
+                self.bat_start_thrs = value;
+                self.bat_start_thrs_init = value;
+            }
+            Err(e) => {
+                eprintln!("Failed to convert string to u8: {}", e);
+            }
+        }
     }
 
     fn get_bat_list(bat_list: &mut Vec<String>) {

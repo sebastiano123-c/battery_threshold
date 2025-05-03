@@ -9,6 +9,7 @@ You are in the right place!
 <p align="center">
   <img src="https://img.shields.io/badge/OS-Linux-blue" /> 
   <img src="https://img.shields.io/badge/Rust->=1.80.1-green" />
+  <img src="https://img.shields.io/badge/zenity-red" />
 </p>
 
 ## Description
@@ -28,8 +29,8 @@ mkdir -r ~/Documents/dev/rust/ && cd ~/Documents/dev/rust/
 git clone https://github.com/sebastiano123-c/battery_threshold.git
 cd battery_threshold/
 cargo build
-cargo run
-cargo install --path .
+cargo run # to test it
+cargo build --release && mv ./target/release/battery_threshold ~/.local/bin # to install it
 ```
 The latter command will install the executable in the $CARGO bin directory, so you can execute where you want.
 After shutting down the terminal and creating a new one, test the program by typing
@@ -46,9 +47,6 @@ Tested with the following linux distributions:
  - [x] Fedora 40 Workstation;
      - [x] SwayWM;
      - [x] i3WM;
-
-## TODO
- - [ ] add the possibility to set sudo privileges with gui and not in terminal;
 
 ## License 
 MIT

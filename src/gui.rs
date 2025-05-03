@@ -1,8 +1,7 @@
 use super::battery::Battery;
-use gtk::glib::ffi::GString;
 use gtk::glib::GString;
-use gtk::{glib, Application, ApplicationWindow, Box, Button, Entry, Label};
-use gtk::{prelude::*, StringObject};
+use gtk::prelude::*;
+use gtk::{glib, ApplicationWindow, Box, Button, Entry, Label};
 use std::cell::RefCell;
 use std::rc::Rc;
 
@@ -41,28 +40,30 @@ impl Gui {
         // Define the battery name
         let line0 = Box::new(gtk::Orientation::Horizontal, 5);
         let battery_name_label = gtk::Label::new(Some("Battery name: "));
-        let battery_name_dropdown_menu = gtk::DropDown::from_strings(&["pippo", "marco"]);
-        // gtk::DropDown::from_strings(&self.bat.borrow().get_bat_name_strings());
+        // let battery_name_dropdown_menu = gtk::DropDown::from_strings(&["pippo", "marco"]);
+        let battery_name_dropdown_menu =
+            gtk::DropDown::from_strings(&self.bat.borrow().get_bat_name_strings());
         line0.append(&battery_name_label);
         line0.append(&battery_name_dropdown_menu);
         row.append(&line0);
-        println!(
-            "{:?}",
-            battery_name_dropdown_menu
-                .selected_item()
-                .unwrap()
-                .property_value("string")
-                .to_value()
-        );
 
         // whenever bat name is choosen in the combobox
         battery_name_dropdown_menu.connect_selected_item_notify(glib::clone!(
-            // #[weak]
-            // bat,
+            #[weak]
+            bat,
             move |dropdown| {
                 if let Some(selected_item) = dropdown.selected_item() {
                     // Get the string representation of the selected item
-                    println!("{:?}", selected_item.property_value("string"));
+                    let value = selected_item.property_value("string");
+                    // Attempt to extract the string from the Value
+                    let result: Result<String, String> = value
+                        .get::<String>()
+                        .map_err(|_| "Failed to get String from Value".to_string());
+
+                    match result {
+                        Ok(rust_string) => bat.borrow_mut().change_bat_name(rust_string),
+                        Err(e) => println!("Error: {}", e),
+                    }
                 }
             }
         ));
@@ -71,7 +72,7 @@ impl Gui {
         let line1 = Box::new(gtk::Orientation::Horizontal, 5);
         let start_label = Label::new(Some("Start charging at: "));
         let start_at = Entry::new();
-        start_at.set_text(&bat.borrow().bat_start_thrs);
+        start_at.set_text(&bat.borrow().bat_start_thrs.to_string());
         line1.append(&start_label);
         line1.append(&start_at);
         row.append(&line1);
@@ -83,7 +84,7 @@ impl Gui {
             move |b| {
                 let gstring = GString::from(b.text()); // Example GString
                 match Self::gstring_to_u8(gstring) {
-                    Ok(value) => bat.borrow_mut().bat_start_thrs = value.to_string(),
+                    Ok(value) => bat.borrow_mut().bat_start_thrs = value,
                     Err(err) => println!("Error: {}", err),
                 }
             }
@@ -93,7 +94,7 @@ impl Gui {
         let line2 = Box::new(gtk::Orientation::Horizontal, 5);
         let end_label = Label::new(Some("Stop charging at: "));
         let end_at = Entry::new();
-        end_at.set_text(&bat.borrow().bat_end_thrs);
+        end_at.set_text(&bat.borrow().bat_end_thrs.to_string());
         line2.append(&end_label);
         line2.append(&end_at);
         row.append(&line2);
@@ -105,7 +106,7 @@ impl Gui {
             move |b| {
                 let gstring = GString::from(b.text()); // Example GString
                 match Self::gstring_to_u8(gstring) {
-                    Ok(value) => bat.borrow_mut().bat_end_thrs = value.to_string(),
+                    Ok(value) => bat.borrow_mut().bat_end_thrs = value,
                     Err(err) => println!("Error: {}", err),
                 }
             }
@@ -117,9 +118,7 @@ impl Gui {
             #[weak]
             bat,
             move |_| {
-                // Get the battery name
-                bat.borrow().set_bat_start_threshold();
-                bat.borrow().set_bat_end_threshold();
+                bat.borrow().set_new_bat_threshold();
             }
         ));
         row.append(&button);
