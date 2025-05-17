@@ -1,10 +1,17 @@
 [package]
 name = "battery_threshold"
-version = "0.2.0"
+version = "0.3.0"
 edition = "2021"
 
 [dependencies]
-gtk = { git = "https://github.com/gtk-rs/gtk4-rs.git", package = "gtk4", features = [
-  "v4_10",
-] }
-# gtk = { version = "0.5.5", package = "gtk4" }
+glib = "0.20.9"
+gtk = { version = "0.9.6", package = "gtk4", features = ["v4_18"] }
+# gtk4 = "0.9.6"
+# gtk = { git = "https://github.com/gtk-rs/gtk4-rs.git", package = "gtk4", features = [
+#   "v4_16",
+# ] }
+
+# [dependencies.gtk]
+# package = "gtk4"
+# version = "0.9.6"
+# features = ["v4_18"]

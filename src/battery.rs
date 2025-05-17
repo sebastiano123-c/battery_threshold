@@ -9,8 +9,7 @@ pub struct Battery {
     pub bat_end_thrs_init: u8,
     pub bat_start_thrs: u8,
     pub bat_end_thrs: u8,
-    pub bat_status: String,
-    pub bat_capacity: String,
+    // pub bat_properties: Vec<String>,
 }
 
 impl Battery {
@@ -26,6 +25,9 @@ impl Battery {
             break; // we only need the first name if any
         }
 
+        // // get battery properties
+        // let bat_props = Self::get_bat_properties(&bat_name);
+
         Self {
             bat_list: battery_list,
             bat_name,
@@ -33,8 +35,7 @@ impl Battery {
             bat_start_thrs_init: 0,
             bat_start_thrs: 0,
             bat_end_thrs: 0,
-            bat_status: "".to_string(),
-            bat_capacity: "".to_string(),
+            // bat_properties: bat_props,
         }
     }
 
@@ -42,27 +43,27 @@ impl Battery {
         self.bat_list.iter().map(|s| s.as_str()).collect()
     }
 
-    pub fn set_bat_property(&self, property_name: &String, new_value: &String) {
-        // -----
-        // Set new property
-        // -----
-        let cmd = format!(
-            "echo {} | sudo tee /sys/class/power_supply/{}/{}",
-            &new_value, &self.bat_name, &property_name,
-        );
-
-        // Print command
-        println!("{}", cmd);
-
-        // Execute command
-        let output1 = Command::new("bash")
-            .args(&["-c", &cmd])
-            .output()
-            .expect("Failed to get random");
-        let content = String::from_utf8(output1.stdout).unwrap();
-
-        println!("Stdout: {}", content);
-    }
+    // pub fn set_bat_property(&self, property_name: &String, new_value: &String) {
+    //     // -----
+    //     // Set new property
+    //     // -----
+    //     let cmd = format!(
+    //         "echo {} | sudo tee /sys/class/power_supply/{}/{}",
+    //         &new_value, &self.bat_name, &property_name,
+    //     );
+    //
+    //     // Print command
+    //     println!("{}", cmd);
+    //
+    //     // Execute command
+    //     let output1 = Command::new("bash")
+    //         .args(&["-c", &cmd])
+    //         .output()
+    //         .expect("Failed to get random");
+    //     let content = String::from_utf8(output1.stdout).unwrap();
+    //
+    //     println!("Stdout: {}", content);
+    // }
 
     pub fn set_new_bat_threshold(&self) {
         let output = std::process::Command::new("zenity")
@@ -191,22 +192,47 @@ impl Battery {
         self.bat_name = name;
     }
 
-    // pub fn get_bat_property(&self, property_name: &str) -> String {
-    //     // cmd get battery status
-    //     let property_file = format!(
-    //         "/sys/class/power_supply/{}/{}",
-    //         &self.bat_name, &property_name
-    //     );
-    //     let output = Command::new("cat")
-    //         .arg(property_file)
-    //         .output()
-    //         .expect("Failed to execute command");
+    pub fn get_bat_property(&self, property_name: &str) -> String {
+        // cmd get battery status
+        let property_file = format!(
+            "/sys/class/power_supply/{}/{}",
+            &self.bat_name, &property_name
+        );
+        let output = Command::new("cat")
+            .arg(property_file)
+            .output()
+            .expect("Failed to execute command");
+
+        let bat_property = std::str::from_utf8(&output.stdout)
+            .expect("Invalid UTF-8 output")
+            .to_string();
+        // println!("Battery {}: {}", property_name, bat_property);
+        bat_property
+    }
+
+    // pub fn get_bat_properties(&self) -> Vec<String> {
+    //     // Construct the path to the battery property file
+    //     let property_file = format!("/sys/class/power_supply/{}/", &self.bat_name);
     //
-    //     let bat_property = std::str::from_utf8(&output.stdout)
-    //         .expect("Invalid UTF-8 output")
-    //         .to_string();
-    //     println!("Battery {}: {}", property_name, bat_property);
-    //     bat_property
+    //     // Read the contents of the directory
+    //     let entries =
+    //         std::fs::read_dir(property_file).expect("Failed to read battery properties directory");
+    //
+    //     // Collect the property names into a vector
+    //     let mut bat_properties: Vec<String> = Vec::new();
+    //
+    //     for entry in entries {
+    //         let entry = entry.expect("Failed to read entry");
+    //         let property_name = entry.file_name().into_string().expect("Invalid UTF-8");
+    //         bat_properties.push(property_name);
+    //     }
+    //
+    // // Print the properties for debugging
+    // for property in &bat_properties {
+    //     println!("Battery property: {}", property);
+    // }
+    //
+    //     bat_properties
     // }
     //
     // pub fn get_bat_capacity(&mut self) {

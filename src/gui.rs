@@ -1,7 +1,7 @@
 use super::battery::Battery;
-use gtk::glib::GString;
+use glib;
+use glib::GString;
 use gtk::prelude::*;
-use gtk::{glib, ApplicationWindow, Box, Button, Entry, Label};
 use std::cell::RefCell;
 use std::rc::Rc;
 
@@ -27,7 +27,7 @@ impl Gui {
         bat.borrow_mut().get_bat_end_threshold();
 
         // create window
-        let window = ApplicationWindow::builder()
+        let window = gtk::ApplicationWindow::builder()
             .application(app)
             .title("Battery threshold changer")
             .default_width(300)
@@ -35,10 +35,10 @@ impl Gui {
             .build();
 
         // Define a row
-        let row = Box::new(gtk::Orientation::Vertical, 5);
+        let row = gtk::Box::new(gtk::Orientation::Vertical, 5);
 
         // Define the battery name
-        let line0 = Box::new(gtk::Orientation::Horizontal, 5);
+        let line0 = gtk::Box::new(gtk::Orientation::Horizontal, 5);
         let battery_name_label = gtk::Label::new(Some("Battery name: "));
         // let battery_name_dropdown_menu = gtk::DropDown::from_strings(&["pippo", "marco"]);
         let battery_name_dropdown_menu =
@@ -68,10 +68,37 @@ impl Gui {
             }
         ));
 
+        // Add switch
+        let line = gtk::Box::new(gtk::Orientation::Horizontal, 5);
+        let page_break = gtk::Label::new(Some(&"Show battery status"));
+        line.append(&page_break);
+        let toggle_switch = gtk::Switch::new();
+        line.append(&toggle_switch);
+        row.append(&line);
+
+        // battery status
+        let bat_status = gtk::Label::new(Some(&bat.borrow().get_bat_property("uevent")));
+        bat_status.set_visible(false);
+        bat_status.set_halign(gtk::Align::Start);
+        row.append(&bat_status);
+
+        // Connect the switch's state change signal
+        toggle_switch.connect_state_flags_changed(glib::clone!(
+            #[weak]
+            bat_status,
+            move |switch, _| {
+                if switch.is_active() {
+                    bat_status.set_visible(true); // Show the label
+                } else {
+                    bat_status.set_visible(false); // Hide the label
+                }
+            }
+        ));
+
         // "Start at" text
-        let line1 = Box::new(gtk::Orientation::Horizontal, 5);
-        let start_label = Label::new(Some("Start charging at: "));
-        let start_at = Entry::new();
+        let line1 = gtk::Box::new(gtk::Orientation::Horizontal, 5);
+        let start_label = gtk::Label::new(Some("Start charging at: "));
+        let start_at = gtk::Entry::new();
         start_at.set_text(&bat.borrow().bat_start_thrs.to_string());
         line1.append(&start_label);
         line1.append(&start_at);
@@ -91,9 +118,9 @@ impl Gui {
         ));
 
         // "End at" text
-        let line2 = Box::new(gtk::Orientation::Horizontal, 5);
-        let end_label = Label::new(Some("Stop charging at: "));
-        let end_at = Entry::new();
+        let line2 = gtk::Box::new(gtk::Orientation::Horizontal, 5);
+        let end_label = gtk::Label::new(Some("Stop charging at: "));
+        let end_at = gtk::Entry::new();
         end_at.set_text(&bat.borrow().bat_end_thrs.to_string());
         line2.append(&end_label);
         line2.append(&end_at);
@@ -113,7 +140,7 @@ impl Gui {
         ));
 
         // Set button
-        let button = Button::with_label("Update values");
+        let button = gtk::Button::with_label("Update values");
         button.connect_clicked(glib::clone!(
             #[weak]
             bat,

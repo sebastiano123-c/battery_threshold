@@ -15,16 +15,14 @@
 //
 // *****************************************************************
 
-// use gtk4 as gtk;
 mod battery;
 mod gui;
 use gtk::prelude::*;
-use gtk::{glib, Application};
 use gui::Gui;
 
 fn main() -> glib::ExitCode {
     // Application GTK
-    let application = Application::builder()
+    let application = gtk::Application::builder()
         .application_id("com.seb.battery_threshold")
         .build();
 
