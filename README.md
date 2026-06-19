@@ -25,7 +25,7 @@ respectively, the battery starts and stops charging.
 ## Installation
 Clone this repo where you prefer (for instance under `~/Documents/dev/rust/`)
 ```{sh}
-mkdir -r ~/Documents/dev/rust/ && cd ~/Documents/dev/rust/
+mkdir -p ~/Documents/dev/rust/ && cd ~/Documents/dev/rust/
 git clone https://github.com/sebastiano123-c/battery_threshold.git
 cd battery_threshold/
 cargo build
